@@ -47,9 +47,9 @@ def validate_jwt(signed_jwt: str):
                     issuer=sa_email,
                     audience=[aud], 
                     algorithms=[alg])
-        print(r)
+        return r 
     except Exception as e:
-        print(e)
+        #print(e)
         raise e
 
 
@@ -62,16 +62,19 @@ async def check_auth_header(request: Request, call_next):
         return JSONResponse(content={"message": "Authorization token not found"}, status_code=status.HTTP_401_UNAUTHORIZED)
     
     header_val = request.headers['Authorization']
-    print(header_val)
+    #print(header_val)
     if not header_val.lower().startswith('bearer '):
         return JSONResponse(content={"message": "Bearer token not found"}, status_code=status.HTTP_401_UNAUTHORIZED)
     
     signed_jwt = header_val[len('bearer '):]
 
     try:
-        validate_jwt(signed_jwt)
+        claims = validate_jwt(signed_jwt)
+
+        if claims['sub'] != sa_email:
+            raise Exception("Invalid subject")
     except Exception as e:
-        return JSONResponse(content={}, status_code=status.HTTP_401_UNAUTHORIZED)
+        return JSONResponse(content={"message": f"{e}"}, status_code=status.HTTP_401_UNAUTHORIZED)
 
     response = await call_next(request)
 
@@ -81,4 +84,3 @@ async def check_auth_header(request: Request, call_next):
 @app.get("/")
 async def hello():
     return {"message": "Hello World"}
-
